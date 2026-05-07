@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRUDE // MONITOR</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400&display=swap');
+:root{--bg:#0a0a0a;--surface:#111;--border:#1e1e1e;--text:#e8e8e8;--muted:#444;--dim:#2a2a2a;--bear:#e05252;--bull:#4caf7d;--warn:#d4a843;--accent:#c8a96e;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:999}
+header{border-bottom:1px solid var(--border);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:100}
+.logo{font-size:13px;font-weight:500;letter-spacing:0.2em;color:var(--accent)}
+.logo span{color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:20px}
+.live-dot{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);letter-spacing:0.1em}
+.dot-pulse{width:6px;height:6px;border-radius:50%;background:var(--bull);animation:pulse 2s infinite}
+.dot-pulse.inactive{background:var(--muted);animation:none}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.8)}}
+#nextRefresh{font-size:11px;color:var(--muted);letter-spacing:0.05em}
+.ticker-wrap{border-bottom:1px solid var(--border);overflow:hidden;height:32px;display:flex;align-items:center;background:var(--surface)}
+.ticker-track{display:flex;gap:48px;white-space:nowrap;animation:ticker 40s linear infinite;padding-left:100%}
+.ticker-track:hover{animation-play-state:paused}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tick-item{font-size:11px;letter-spacing:0.08em;color:var(--muted);display:flex;gap:8px}
+.tick-item .tick-label{color:var(--accent)}
+.tick-item .tick-val{color:var(--text)}
+.tick-item .tick-chg.bear{color:var(--bear)}
+.tick-item .tick-chg.bull{color:var(--bull)}
+.tick-item .tick-chg.warn{color:var(--warn)}
+main{max-width:820px;margin:0 auto;padding:28px 24px}
+.stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:28px}
+.stat-cell{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.stat-label{font-size:9px;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase}
+.stat-val{font-size:18px;font-weight:500;color:var(--text)}
+.stat-val.bear{color:var(--bear)}
+.stat-val.bull{color:var(--bull)}
+.stat-val.warn{color:var(--warn)}
+.stat-sub{font-size:10px;color:var(--muted)}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-title{font-size:10px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase}
+.refresh-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--muted);background:none;border:1px solid var(--border);padding:4px 10px;cursor:pointer;border-radius:2px;transition:all 0.15s}
+.refresh-btn:hover{color:var(--accent);border-color:var(--accent)}
+.refresh-btn:disabled{opacity:0.3;cursor:default}
+#feed{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:28px}
+.news-item{background:var(--surface);padding:14px 16px;display:flex;gap:14px;align-items:flex-start;cursor:default;transition:background 0.1s;animation:slideIn 0.3s ease forwards;opacity:0}
+.news-item:hover{background:var(--dim)}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.news-item.new-alert{border-left:2px solid var(--warn)}
+.sentiment-bar{width:3px;border-radius:2px;flex-shrink:0;margin-top:3px;align-self:stretch;min-height:40px}
+.sentiment-bar.bearish{background:var(--bear)}
+.sentiment-bar.bullish{background:var(--bull)}
+.sentiment-bar.neutral{background:var(--muted)}
+.news-content{flex:1;min-width:0}
+.news-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.news-source{font-size:9px;letter-spacing:0.15em;color:var(--accent);text-transform:uppercase}
+.news-time{font-size:9px;color:var(--muted)}
+.news-impact{font-size:9px;padding:1px 5px;border-radius:2px;letter-spacing:0.1em}
+.news-impact.high{background:rgba(224,82,82,0.15);color:var(--bear)}
+.news-impact.med{background:rgba(212,168,67,0.15);color:var(--warn)}
+.news-impact.low{background:rgba(68,68,68,0.3);color:var(--muted)}
+.news-headline{font-size:13px;font-weight:400;color:var(--text);line-height:1.45;font-family:var(--sans)}
+.news-item.seen .news-headline{color:var(--muted)}
+#alertBanner{display:none;background:rgba(212,168,67,0.08);border:1px solid rgba(212,168,67,0.3);border-radius:4px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--warn);letter-spacing:0.05em;line-height:1.5;animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.skeleton{background:var(--surface);padding:14px 16px;display:flex;gap:14px}
+.skel-bar{width:3px;background:var(--dim);border-radius:2px;min-height:40px}
+.skel-content{flex:1;display:flex;flex-direction:column;gap:8px;padding-top:4px}
+.skel-line{height:9px;background:var(--dim);border-radius:2px;animation:shimmer 1.5s infinite}
+@keyframes shimmer{0%,100%{opacity:0.3}50%{opacity:0.7}}
+#log{font-size:10px;color:var(--muted);letter-spacing:0.05em;display:flex;flex-direction:column;gap:4px}
+.log-line{display:flex;gap:10px}
+.log-ts{color:var(--dim);flex-shrink:0}
+.log-msg.ok{color:#3a7a54}
+.log-msg.warn{color:var(--warn)}
+.log-msg.err{color:var(--bear)}
+#notifBar{background:rgba(200,169,110,0.06);border:1px solid rgba(200,169,110,0.2);border-radius:4px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#notifBar span{font-size:11px;color:var(--muted);letter-spacing:0.05em}
+#notifBar button{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--accent);background:none;border:1px solid rgba(200,169,110,0.4);padding:4px 10px;cursor:pointer;border-radius:2px;white-space:nowrap}
+#progressBar{height:1px;background:var(--accent);width:0%;transition:width 0.5s linear;margin-bottom:12px;opacity:0.5}
+@media(max-width:600px){.stats-strip{grid-template-columns:repeat(2,1fr)}header{padding:14px 16px}main{padding:16px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">CRUDE <span>//</span> MONITOR</div>
+  <div class="header-right">
+    <div class="live-dot"><div class="dot-pulse" id="liveDot"></div><span id="liveLabel">LIVE</span></div>
+    <div id="nextRefresh">next: --:--</div>
+  </div>
+</header>
+
+<div class="ticker-wrap">
+  <div class="ticker-track">
+    <div class="tick-item"><span class="tick-label">WTI</span><span class="tick-val">$95.21</span><span class="tick-chg bear">-0.48%</span></div>
+    <div class="tick-item"><span class="tick-label">BRENT</span><span class="tick-val">$102.22</span><span class="tick-chg bear">-6.96%</span></div>
+    <div class="tick-item"><span class="tick-label">HORMUZ</span><span class="tick-val">PARTIAL OPEN</span><span class="tick-chg warn">WATCH</span></div>
+    <div class="tick-item"><span class="tick-label">US-IRAN</span><span class="tick-val">TALKS ACTIVE</span><span class="tick-chg bear">BEARISH</span></div>
+    <div class="tick-item"><span class="tick-label">SUPPLY LOSS</span><span class="tick-val">-9M BPD</span><span class="tick-chg bear">DISRUPTED</span></div>
+    <div class="tick-item"><span class="tick-label">WTI</span><span class="tick-val">$95.21</span><span class="tick-chg bear">-0.48%</span></div>
+    <div class="tick-item"><span class="tick-label">BRENT</span><span class="tick-val">$102.22</span><span class="tick-chg bear">-6.96%</span></div>
+    <div class="tick-item"><span class="tick-label">HORMUZ</span><span class="tick-val">PARTIAL OPEN</span><span class="tick-chg warn">WATCH</span></div>
+    <div class="tick-item"><span class="tick-label">US-IRAN</span><span class="tick-val">TALKS ACTIVE</span><span class="tick-chg bear">BEARISH</span></div>
+    <div class="tick-item"><span class="tick-label">SUPPLY LOSS</span><span class="tick-val">-9M BPD</span><span class="tick-chg bear">DISRUPTED</span></div>
+  </div>
+</div>
+
+<main>
+  <div class="stats-strip">
+    <div class="stat-cell"><div class="stat-label">WTI price</div><div class="stat-val bear" id="s-price">$95.21</div><div class="stat-sub">-0.46 today</div></div>
+    <div class="stat-cell"><div class="stat-label">Bias</div><div class="stat-val bear">BEARISH</div><div class="stat-sub" id="s-driver">Iran deal risk</div></div>
+    <div class="stat-cell"><div class="stat-label">High-impact alerts</div><div class="stat-val warn" id="s-alerts">0</div><div class="stat-sub">this session</div></div>
+    <div class="stat-cell"><div class="stat-label">Last refresh</div><div class="stat-val" id="s-updated" style="font-size:13px">--:--</div><div class="stat-sub" id="s-count">-- stories</div></div>
+  </div>
+
+  <div id="notifBar">
+    <span>Enable browser notifications for high-impact breaking alerts</span>
+    <button onclick="requestNotif()">ENABLE ALERTS</button>
+  </div>
+
+  <div id="alertBanner"></div>
+  <div id="progressBar"></div>
+
+  <div class="section-head">
+    <div class="section-title">Live crude oil feed</div>
+    <button class="refresh-btn" id="refreshBtn" onclick="fetchNow()">&#8635; REFRESH</button>
+  </div>
+
+  <div id="feed">
+    <div class="skeleton"><div class="skel-bar"></div><div class="skel-content"><div class="skel-line" style="width:28%"></div><div class="skel-line" style="width:82%"></div></div></div>
+    <div class="skeleton"><div class="skel-bar"></div><div class="skel-content"><div class="skel-line" style="width:22%"></div><div class="skel-line" style="width:68%"></div></div></div>
+    <div class="skeleton"><div class="skel-bar"></div><div class="skel-content"><div class="skel-line" style="width:32%"></div><div class="skel-line" style="width:75%"></div></div></div>
+    <div class="skeleton"><div class="skel-bar"></div><div class="skel-content"><div class="skel-line" style="width:20%"></div><div class="skel-line" style="width:90%"></div></div></div>
+  </div>
+
+  <div class="section-head" style="margin-top:20px"><div class="section-title">System log</div></div>
+  <div id="log"></div>
+</main>
+
+<script>
+const INTERVAL = 5 * 60 * 1000;
+let alertCount = 0, totalStories = 0;
+let seenHeadlines = new Set();
+let refreshTimer = null, countdownInterval = null;
+let notifEnabled = false;
+
+function ts() {
+  return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function addLog(msg, type='') {
+  const log = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = 'log-line';
+  d.innerHTML = '<span class="log-ts">'+ts()+'</span><span class="log-msg '+type+'">'+msg+'</span>';
+  log.insertBefore(d, log.firstChild);
+  while(log.children.length > 6) log.removeChild(log.lastChild);
+}
+
+function requestNotif() {
+  if(!('Notification' in window)){addLog('notifications not supported','warn');return;}
+  Notification.requestPermission().then(p => {
+    if(p==='granted'){notifEnabled=true;document.getElementById('notifBar').style.display='none';addLog('browser notifications enabled','ok');}
+    else addLog('notification permission denied','warn');
+  });
+}
+
+function pushNotif(title, body) {
+  if(notifEnabled && Notification.permission==='granted') new Notification(title,{body});
+}
+
+function startCountdown(ms) {
+  clearInterval(countdownInterval);
+  let rem = ms;
+  const el = document.getElementById('nextRefresh');
+  const pb = document.getElementById('progressBar');
+  countdownInterval = setInterval(() => {
+    rem -= 1000;
+    if(rem <= 0){el.textContent='next: now';return;}
+    const m = Math.floor(rem/60000);
+    const s = Math.floor((rem%60000)/1000);
+    el.textContent = 'next: '+m+':'+(s+'').padStart(2,'0');
+    pb.style.width = (((ms-rem)/ms)*100)+'%';
+  },1000);
+}
+
+async function fetchNow() {
+  const btn = document.getElementById('refreshBtn');
+  const dot = document.getElementById('liveDot');
+  btn.disabled = true;
+  btn.textContent = '... FETCHING';
+  dot.classList.add('inactive');
+  addLog('requesting crude oil news feed...');
+
+  const prompt = `Search for the latest crude oil and energy market news happening right now today May 2026. Return ONLY a valid JSON array of 6 news items. No markdown, no explanation, just the array. Each object must have exactly these keys:
+"headline" (string, max 12 words, factual),
+"sentiment" (exactly one of: "bearish", "bullish", "neutral"),
+"impact" (exactly one of: "high", "med", "low"),
+"source" (string, publication name),
+"age" (string like "5m ago" or "2h ago")
+Return only the JSON array.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:900,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    let raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    raw = raw.replace(/```json|```/g,'').trim();
+    const s=raw.indexOf('['), e=raw.lastIndexOf(']');
+    if(s===-1) throw new Error('no JSON array in response');
+    const items = JSON.parse(raw.slice(s,e+1));
+    if(!Array.isArray(items)||items.length===0) throw new Error('empty array');
+    renderFeed(items);
+    totalStories += items.length;
+    document.getElementById('s-count').textContent = totalStories+' stories loaded';
+    document.getElementById('s-updated').textContent = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    addLog('loaded '+items.length+' stories','ok');
+  } catch(err) {
+    addLog('error: '+err.message,'err');
+    document.getElementById('feed').innerHTML = '<div style="padding:20px 16px;font-size:12px;color:var(--muted)">Failed to load. Click refresh to try again.</div>';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '&#8635; REFRESH';
+  dot.classList.remove('inactive');
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(fetchNow, INTERVAL);
+  startCountdown(INTERVAL);
+}
+
+function renderFeed(items) {
+  const feed = document.getElementById('feed');
+  const newItems = items.filter(i=>!seenHeadlines.has(i.headline));
+  const highNew = newItems.filter(i=>i.impact==='high');
+
+  feed.innerHTML = '';
+  items.forEach((item,idx) => {
+    const isNew = !seenHeadlines.has(item.headline);
+    seenHeadlines.add(item.headline);
+    const div = document.createElement('div');
+    div.className = 'news-item'+(isNew && item.impact==='high' ? ' new-alert' : '');
+    div.style.animationDelay = (idx*0.06)+'s';
+    const ic = item.impact==='high'?'high':item.impact==='med'?'med':'low';
+    const il = item.impact==='high'?'HIGH':item.impact==='med'?'MED':'LOW';
+    div.innerHTML =
+      '<div class="sentiment-bar '+item.sentiment+'"></div>'+
+      '<div class="news-content">'+
+        '<div class="news-meta">'+
+          '<span class="news-source">'+(item.source||'')+'</span>'+
+          '<span class="news-time">'+(item.age||'')+'</span>'+
+          '<span class="news-impact '+ic+'">'+il+'</span>'+
+        '</div>'+
+        '<div class="news-headline">'+(item.headline||'')+'</div>'+
+      '</div>';
+    div.addEventListener('click',()=>div.classList.add('seen'));
+    feed.appendChild(div);
+  });
+
+  if(highNew.length > 0) {
+    alertCount += highNew.length;
+    document.getElementById('s-alerts').textContent = alertCount;
+    const b = document.getElementById('alertBanner');
+    b.innerHTML = '&#9888;  '+highNew.length+' high-impact alert'+(highNew.length>1?'s':'')+': '+highNew.map(i=>i.headline).join(' &middot; ');
+    b.style.display = 'block';
+    pushNotif('Crude Oil Alert', highNew.map(i=>i.headline).join('\n'));
+    setTimeout(()=>{b.style.display='none';},14000);
+    addLog(highNew.length+' high-impact alert(s) triggered','warn');
+  }
+}
+
+if('Notification' in window && Notification.permission==='granted'){
+  notifEnabled=true;
+  document.getElementById('notifBar').style.display='none';
+}
+fetchNow();
+</script>
+</body>
+</html>
